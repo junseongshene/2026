@@ -523,7 +523,6 @@ body.is-dark .panoptic-ring {
   font-size: clamp(1rem, 1.5vw, 1.25rem);
 }
 
-.scene05-counter,
 .scene05-intro {
   position: sticky;
   top: 2.5rem;

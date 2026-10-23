@@ -83,7 +83,6 @@
   const sceneLabel = document.getElementById("scene-label");
   const recTimeEl = document.getElementById("rec-time");
   const scrollProgressEl = document.getElementById("scroll-progress");
-  const scene05Counter = document.getElementById("scene05-counter");
   const scene05Intro = document.getElementById("scene05-intro");
   const removableLabels = document.getElementById("removable-labels");
 
@@ -536,7 +535,6 @@
         }
       }, reduced ? 0 : 600);
     }
-    updateCardCounter();
     if (progress > 0.22 && progress < 0.72 && windowsRoot) {
       const cols = 3;
       [...windowsRoot.children].forEach((win, i) => {
@@ -549,15 +547,6 @@
     }
     if (progress > 0.7 && closing && windowsRoot && !windowsRoot.children.length) {
       showClosingLabels();
-    }
-  }
-
-  function updateCardCounter() {
-    if (!scene05Counter || !windowsRoot) return;
-    const n = windowsRoot.children.length;
-    scene05Counter.hidden = n === 0 && closing && !closing.hidden;
-    if (!scene05Counter.hidden) {
-      scene05Counter.textContent = (COPY.scene05Counter || "남은 맞춤 카드") + " " + n;
     }
   }
 
@@ -587,7 +576,6 @@
     if (windowsRoot) windowsRoot.hidden = !any;
     if (closing) closing.hidden = any;
     if (!any && !removableLabels?.dataset.filled) document.body.classList.remove("is-dark");
-    updateCardCounter();
     if (!any && sceneProgress(cut05) > 0.65) showClosingLabels();
   }
 

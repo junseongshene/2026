@@ -47,16 +47,15 @@
 
   window.SCENE_COPY = {
     title: "2026",
-    scene02Header: "누가 지켜보는가",
-    scene03Header: "당신은 이렇게 읽힌다",
+    scene02Header: "Who Is Watching",
+    scene03Header: "This Is How You Are Read",
     scene03Sub: "생각보다 더 사소한 것들도 취합되고 있다.",
     scene03Idle: "아무것도 하지 않는 것도 데이터입니다.",
     privacyNotice:
       "이 페이지는 위 정보를 서버로 보내지 않습니다. 실제 서비스는 그렇지 않을 수 있습니다.",
-    scene04Header: "그리고 이것은 ‘맞춤’이라 불린다",
+    scene04Header: "And This Is What They Call Personalization",
     scene04End: "이것은 당신이 고른 것이 아니다.",
     scene05Intro: "이번에는 닫을 수 있다.",
-    scene05Counter: "남은 맞춤 카드",
     endingLines: [
       "알고리즘은 당신을 읽는다. 당신도 알고리즘을 읽을 수 있다.",
       "보이는 것을 의심하고, 보이지 않는 것을 물어라.",
