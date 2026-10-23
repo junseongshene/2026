@@ -1,0 +1,464 @@
+@font-face {
+  font-family: "Exhibition Latin";
+  src: local("Helvetica Neue Bold"), local("HelveticaNeue-Bold"), local("Helvetica Neue");
+  font-weight: 700;
+  font-style: normal;
+  unicode-range: U+0020-007E, U+00A0-00FF;
+}
+
+:root {
+  --red: #e30613;
+  --margin: clamp(0.625rem, 2vw, 1.75rem);
+  --gutter: clamp(1.5rem, 3.2vw, 2.75rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: #000;
+  overflow-x: clip;
+  max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+body {
+  overflow-x: clip;
+  max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  font-family: "Exhibition Latin", Pretendard, "Helvetica Neue", Helvetica, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: #fff;
+  color: #000;
+  text-align: left;
+  line-height: 1.3;
+}
+
+body.is-dark {
+  background: #000;
+  color: #fff;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 3px;
+}
+
+.cross {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+.watch-space {
+  position: relative;
+  height: 200vh;
+}
+
+.watch {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.watch-dive {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.watch-dive.is-zooming {
+  will-change: transform;
+}
+
+.watch-mark {
+  position: absolute;
+  top: 100vh;
+  width: 1px;
+  height: 1px;
+}
+
+.eye {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-weight: 400;
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+}
+
+.cut {
+  min-height: 100vh;
+}
+
+.scene02-space {
+  position: relative;
+  height: 360vh;
+}
+
+.sheet--scene02 {
+  --scene02-split: 0;
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+  width: 100%;
+  padding: calc(var(--margin) + 0.35rem) clamp(0.5rem, 2vw, 1.15rem) var(--margin);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: calc(var(--scene02-split) * var(--gutter));
+}
+
+.sheet--scene02.is-split {
+  padding-inline: var(--margin);
+}
+
+.scene02-main {
+  flex: 1 1 auto;
+  width: calc(100% - var(--scene02-split) * (50% + var(--gutter)));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.scene02-aside {
+  flex: 0 0 calc(var(--scene02-split) * 50%);
+  width: calc(var(--scene02-split) * 50%);
+  max-width: calc(var(--scene02-split) * 50%);
+  opacity: var(--scene02-split);
+  transform: translateX(calc(var(--scene02-split) * 1.25rem - 1.25rem));
+  pointer-events: none;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sheet--scene02:not(.is-split) .scene02-aside {
+  display: none;
+}
+
+.sheet--scene02.is-split .scene02-aside {
+  display: block;
+  pointer-events: auto;
+}
+
+.scene02-ko {
+  opacity: calc(0.15 + var(--scene02-split) * 0.85);
+  transform: translateY(calc((1 - var(--scene02-split)) * 0.75rem));
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.sheet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--gutter);
+  row-gap: 1.75rem;
+  min-height: 100vh;
+  padding: calc(var(--margin) + 0.5rem) var(--margin) var(--margin);
+  align-content: start;
+}
+
+.sheet--stick {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.travel {
+  height: 150vh;
+}
+
+.col-a,
+.col-b {
+  min-width: 0;
+}
+
+.prose {
+  font-size: clamp(1.05rem, 1.65vw, 1.4rem);
+  line-height: 1.35;
+  text-align: left;
+}
+
+.excerpt {
+  margin-bottom: 1.25rem;
+}
+
+.mix {
+  width: 100%;
+}
+
+.sheet--scene02 .mix-para {
+  margin: 0;
+  font-size: clamp(0.8rem, 1.55vw, 1.38rem);
+  line-height: 1.16;
+  letter-spacing: -0.035em;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.sheet--scene02 .scene02-main .mix {
+  min-height: calc(100vh - var(--margin) * 2.5);
+}
+
+.mix-word {
+  display: inline;
+}
+
+.mix-word.is-hidden {
+  opacity: 0;
+}
+
+.mix-word--data {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.92em;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.mix-word--data .mix-word-key {
+  color: var(--red);
+}
+
+.mix-word--subject {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+}
+
+.subject-ascii {
+  margin: 0.35rem 0 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-weight: 400;
+  font-size: clamp(0.55rem, 0.85vw, 0.72rem);
+  line-height: 1.15;
+  letter-spacing: 0;
+  white-space: pre;
+}
+
+
+.conduit {
+  margin: 1rem 0 0.35rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-weight: 400;
+  font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.diagram li.diagram-live-key {
+  color: var(--red);
+}
+
+.cut--05 {
+  position: relative;
+}
+
+.sheet--closing {
+  position: relative;
+  z-index: 3;
+  background: #fff;
+  color: #000;
+}
+
+.closing-spacer {
+  min-height: 1px;
+}
+
+.feed-stage--b .col-b .log {
+  line-height: 1.22;
+  font-size: clamp(0.72rem, 0.92vw, 0.88rem);
+}
+
+.feed-stage--c .col-b .log {
+  line-height: 1.12;
+  font-size: clamp(0.68rem, 0.88vw, 0.82rem);
+}
+
+.feed-stage--c .feed-name {
+  font-size: clamp(2.8rem, 7.5vw, 6.5rem);
+}
+
+.log {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: clamp(0.75rem, 0.95vw, 0.9rem);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.04em;
+}
+
+.sheet--stick .col-a .log {
+  max-height: 38vh;
+  overflow: auto;
+}
+
+.subjects {
+  list-style: none;
+  margin-bottom: 2rem;
+}
+
+.subjects button {
+  display: block;
+  width: 100%;
+  font-size: clamp(2rem, 4.6vw, 4rem);
+  line-height: 0.95;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid currentColor;
+}
+
+.detail {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: clamp(0.85rem, 1.05vw, 1rem);
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 0.7rem 0 0.2rem;
+}
+
+.diagram {
+  list-style: none;
+  margin-top: 1.25rem;
+}
+
+.diagram li {
+  border-top: 1px solid currentColor;
+  padding: 0.4rem 0;
+  font-size: clamp(0.75rem, 0.95vw, 0.9rem);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.feed-name {
+  font-size: clamp(2.6rem, 7vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  margin-bottom: 1rem;
+}
+
+.windows {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem 0.85rem;
+  min-height: 100vh;
+  padding: calc(var(--margin) + 0.5rem) var(--margin) var(--margin);
+  align-content: start;
+  overflow-x: clip;
+}
+
+.window {
+  display: block;
+  width: 100%;
+  border: 1px solid currentColor;
+  padding: 0.85rem 0.9rem 1rem;
+  min-height: 8.5rem;
+  touch-action: none;
+}
+
+.window .feed-name {
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  margin-bottom: 0.55rem;
+}
+
+@media (max-width: 800px) {
+  .eye {
+    font-size: 5px;
+  }
+
+  .sheet {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .windows {
+    grid-template-columns: 1fr;
+  }
+
+  .sheet--stick {
+    position: relative;
+    height: auto;
+    overflow: visible;
+  }
+
+  .travel {
+    height: 0;
+  }
+
+  .window {
+    grid-column: 1 / -1 !important;
+  }
+
+  .prose {
+    font-size: 0.95rem;
+  }
+
+  .subjects button {
+    font-size: 1.55rem;
+  }
+
+  .feed-name {
+    font-size: 2rem;
+  }
+
+  .sheet--stick .col-a .log {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .scene02-space {
+    height: 320vh;
+  }
+
+  .sheet--scene02 .mix-para {
+    font-size: clamp(0.75rem, 3.2vw, 0.95rem);
+  }
+}
