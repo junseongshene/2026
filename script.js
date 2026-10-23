@@ -51,51 +51,51 @@
 
   const RECAP_KEYS = [...new Set([...DETAILS.cookie, ...DETAILS.cache, ...DETAILS.algo])];
   const ORDERED_KEYS = [...RECAP_KEYS, ...ALL_KEYS.filter((key) => !RECAP_KEYS.includes(key))];
-  const LIVE_DIAGRAM_KEY = "Date";
 
-  const MIX_CHUNKS = [
-    "one of those pictures which are so contrived that the eyes follow you about when you move. BIG BROTHER IS WATCHING YOU, the caption beneath it ran.",
-    "The instrument (the telescreen, it was called) could be dimmed, but there was no way of shutting it off completely.",
-    "There was one on the house-front immediately opposite. BIG BROTHER IS WATCHING YOU, the caption said, while the dark eyes looked deep into Winston's own.",
-    "Behind Winston's back the voice from the telescreen was still babbling away about pig-iron and the overfulfilment of the Ninth Three-Year Plan. The telescreen received and transmitted simultaneously. Any sound that Winston made, above the level of a very low whisper, would be picked up by it, moreover, so long as he remained within the field of vision which the metal plaque commanded, he could be seen as well as heard. There was of course no way of knowing whether you were being watched at any given moment.",
-    "You had to live--did live, from habit that became instinct--in the assumption that every sound you made was overheard, and, except in darkness, every movement scrutinized.",
-    "Winston kept his back turned to the telescreen. It was safer; though, as he well knew, even a back can be revealing. A kilometre away the Ministry of Truth, his place of work, towered vast and white above the grimy landscape.",
-    "The patrols did not matter, however. Only the Thought Police mattered. The Ministry of Love was the really frightening one. There were no windows in it at all.",
-    "Winston turned round abruptly. He had set his features into the expression of quiet optimism which it was advisable to wear when facing the telescreen. He crossed the room into the tiny kitchen.",
-    "For some reason the telescreen in the living-room was in an unusual position. Instead of being placed, as was normal, in the end wall, where it could command the whole room, it was in the longer wall, opposite the window.",
-    "Winston was able to remain outside the range of the telescreen, so far as sight went. On the other hand his voice was still carrying, and of course there was always the danger of some careless word.",
-  ];
+  const COPY = window.SCENE_COPY || {};
+  const POPUPS = COPY.popups || [];
+  const MIX_CHUNKS = COPY.mixChunks || [];
+  const STREAM_REFRAIN = COPY.streamRefrain || "BIG BROTHER IS WATCHING YOU";
+  const CARD_TEMPLATES = COPY.cardTemplates || {};
 
-  const SCENE02_REPLACE_START = 0.18;
-  const SCENE02_REPLACE_END = 0.48;
-  const SCENE02_SPLIT_START = 0.48;
-  const SCENE02_SPLIT_END = 0.74;
-
-  function mixFullText() {
-    return MIX_CHUNKS.join(" ");
-  }
+  const SCENE02_SPLIT_START = 0.12;
+  const SCENE02_SPLIT_END = 0.42;
+  const MAX_POPUPS = 15;
 
   const eyeEl = document.getElementById("eye");
-  const mix = document.getElementById("mix");
+  const streamEl = document.getElementById("stream");
+  const popupStack = document.getElementById("popup-stack");
   const sheet02 = document.getElementById("sheet-02");
   const cut02Aside = document.getElementById("cut02-aside");
   const cut02 = document.getElementById("cut-02");
-  const rawLog = document.getElementById("raw-log");
-  const diagram = document.getElementById("diagram");
+  const obsLog = document.getElementById("obs-log");
+  const profileLabels = document.getElementById("profile-labels");
+  const profileSummary = document.getElementById("profile-summary");
+  const idleHint = document.getElementById("idle-hint");
+  const cardGrid = document.getElementById("card-grid");
+  const scene04End = document.getElementById("scene04-end");
   const windowsRoot = document.getElementById("windows");
   const closing = document.getElementById("closing");
   const travel = document.getElementById("travel");
   const cut03 = document.getElementById("cut-03");
-  const conduitEl = document.getElementById("conduit");
+  const cut04 = document.getElementById("cut-04");
+  const cut05 = document.getElementById("cut-05");
+  const sceneLabel = document.getElementById("scene-label");
+  const recTimeEl = document.getElementById("rec-time");
+  const scrollProgressEl = document.getElementById("scroll-progress");
+  const scene05Counter = document.getElementById("scene05-counter");
+  const scene05Intro = document.getElementById("scene05-intro");
+  const removableLabels = document.getElementById("removable-labels");
+
+  const stateApi = window.EXHIBITION_STATE;
+
   const ramp = " .:-=+*#%@";
   const plate = document.createElement("canvas");
   const plateCtx = plate.getContext("2d", { willReadFrequently: true });
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  const narrow = window.matchMedia("(max-width: 800px)");
 
-  let cameraOn = false;
   let eyeImage = null;
   let eyeCrop = null;
   let eyeStill = false;
@@ -113,19 +113,21 @@
   let lastHidden = "";
   let tilt = "";
   let gpu = "";
-  let currentCut = "01.1";
+  let currentScene = 1;
   const dwell = {};
   let lastTick = performance.now();
   let lastDraw = 0;
-  let mixStarted = false;
-  let mixRevealDone = false;
-  let mixReplaceCount = 0;
-  let mixWordEls = [];
-  let scene02Split = 0;
+
+  let streamIndex = 0;
+  let streamTimer = null;
+  let streamStarted = false;
+  let popupCount = 0;
   let scene02Top = 0;
-  let scene02Complete = false;
-  let mixTyping = false;
-  let mixReplaceTokens = null;
+  let scene05Frozen = false;
+  let scene05RedEnabled = false;
+  let profileLabelData = [];
+  let customCardCount = 0;
+  let windowsBuilt = false;
 
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
@@ -163,6 +165,7 @@
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const resources = [...new Set(performance.getEntriesByType("resource").map((entry) => fileOf(entry.name)))].slice(0, 24);
     const orientation = screen.orientation ? screen.orientation.type + " " + screen.orientation.angle : "";
+    const visitor = stateApi ? stateApi.getVisitorId() : "";
     return {
       "document.cookie": document.cookie || "",
       "navigator.cookieEnabled": navigator.cookieEnabled ? "1" : "0",
@@ -179,7 +182,7 @@
       "maxTouchPoints": String(navigator.maxTouchPoints || 0),
       "hardwareConcurrency": String(navigator.hardwareConcurrency || ""),
       "deviceMemory": navigator.deviceMemory ? String(navigator.deviceMemory) : "",
-      "connection": conn ? [conn.effectiveType, conn.downlink, conn.rtt].filter((value) => value != null && value !== "").join(" ") : "",
+      "connection": conn ? [conn.effectiveType, conn.downlink, conn.rtt].filter((v) => v != null && v !== "").join(" ") : "",
       "navigator.onLine": navigator.onLine ? "1" : "0",
       "userAgent": navigator.userAgent || "",
       "navigator.platform": navigator.platform || "",
@@ -196,14 +199,498 @@
       "click": String(clickCount),
       "visibility.hidden": String(hiddenCount) + (lastHidden ? " " + lastHidden : ""),
       "resize": String(resizeCount),
-      "camera": cameraOn ? "1" : "0",
+      "camera": "0",
       "deviceorientation": tilt,
       "performance.now": String(Math.round(performance.now())),
+      visitor_id: visitor,
     };
   }
 
   function formatKeys(data, keys) {
     return keys.map((key) => key + "=" + (data[key] == null ? "" : data[key])).join("\n");
+  }
+
+  function sceneProgress(el) {
+    if (!el) return 0;
+    const span = Math.max(el.offsetHeight - window.innerHeight, 1);
+    return clamp((window.scrollY - el.offsetTop) / span, 0, 1);
+  }
+
+  function easeInOut(t) {
+    return t * t * (3 - 2 * t);
+  }
+
+  function signalLines(data) {
+    const vid = data.visitor_id || stateApi.getVisitorId();
+    return [
+      "visitor_id=" + vid,
+      "timezone=" + data["Intl.timeZone"],
+      "language=" + data["navigator.language"],
+      "screen=" + data["window.inner"],
+      "scroll_speed=" + data.scrollSpeed,
+      "pointer=" + data.pointer,
+    ];
+  }
+
+  function buildStreamQueue() {
+    const data = snapshot();
+    const signals = signalLines(data);
+    const queue = [];
+    const paras = MIX_CHUNKS.length ? MIX_CHUNKS : [STREAM_REFRAIN];
+    for (let i = 0; i < paras.length * 2; i += 1) {
+      if (i % 2 === 0) queue.push({ type: "prose", text: paras[(i / 2) % paras.length] });
+      else queue.push({ type: "signal", text: signals[(i / 2) % signals.length] });
+    }
+    queue.push({ type: "refrain", text: STREAM_REFRAIN });
+    return queue;
+  }
+
+  let streamQueue = buildStreamQueue();
+
+  function appendStreamBlock(block) {
+    if (!streamEl) return;
+    const el = document.createElement("p");
+    el.className = "stream-block stream-block--" + block.type;
+    if (block.type === "signal") {
+      el.innerHTML = '<span class="stream-key">' + block.text.split("=")[0] + "</span>=" + block.text.split("=").slice(1).join("=");
+    } else {
+      el.textContent = block.text;
+    }
+    streamEl.appendChild(el);
+    while (streamEl.children.length > 24) streamEl.firstElementChild.remove();
+  }
+
+  function streamIntervalMs(progress) {
+    return 2000 - progress * 1800;
+  }
+
+  function tickStream() {
+    if (!streamStarted || streamIndex >= streamQueue.length) {
+      streamQueue = buildStreamQueue();
+      streamIndex = 0;
+    }
+    appendStreamBlock(streamQueue[streamIndex]);
+    streamIndex += 1;
+    const progress = scene02Progress();
+    const delay = reduced ? 0 : streamIntervalMs(progress);
+    streamTimer = window.setTimeout(tickStream, Math.max(80, delay));
+  }
+
+  function startStream() {
+    if (streamStarted) return;
+    streamStarted = true;
+    streamQueue = buildStreamQueue();
+    streamIndex = 0;
+    spawnPopups(1);
+    tickStream();
+  }
+
+  function createPopupCard(spec) {
+    const card = document.createElement("article");
+    card.className = "popup-card";
+    card.dataset.popupId = spec.id;
+    const head = document.createElement("div");
+    head.className = "popup-card__head";
+    const title = document.createElement("span");
+    title.className = "popup-card__title";
+    title.textContent = spec.name;
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "popup-card__close";
+    closeBtn.setAttribute("aria-label", "닫기");
+    closeBtn.textContent = "×";
+    head.append(title, closeBtn);
+    const msg = document.createElement("p");
+    msg.className = "popup-card__msg";
+    msg.textContent = spec.message;
+    card.append(head, msg);
+
+    let hoverStart = 0;
+    const onHoverStart = () => {
+      hoverStart = performance.now();
+    };
+    const onHoverEnd = () => {
+      if (hoverStart && stateApi) {
+        stateApi.recordPopupHover(spec.id, performance.now() - hoverStart);
+        hoverStart = 0;
+      }
+    };
+
+    if (finePointer) {
+      card.addEventListener("mouseenter", onHoverStart);
+      card.addEventListener("mouseleave", onHoverEnd);
+    }
+
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      card.remove();
+      spawnPopups(2);
+    });
+
+    return card;
+  }
+
+  function spawnPopups(n) {
+    if (!popupStack || !POPUPS.length) return;
+    for (let i = 0; i < n; i += 1) {
+      if (popupStack.children.length >= MAX_POPUPS) break;
+      const spec = POPUPS[popupCount % POPUPS.length];
+      popupCount += 1;
+      popupStack.prepend(createPopupCard(spec));
+    }
+  }
+
+  function measureScene02() {
+    if (cut02) scene02Top = cut02.offsetTop;
+  }
+
+  function scene02Progress() {
+    return sceneProgress(cut02);
+  }
+
+  function updateScene02() {
+    if (!sheet02) return;
+    const progress = scene02Progress();
+    const splitP = easeInOut(clamp((progress - SCENE02_SPLIT_START) / (SCENE02_SPLIT_END - SCENE02_SPLIT_START), 0, 1));
+    sheet02.style.setProperty("--scene02-split", String(splitP));
+    sheet02.classList.toggle("is-split", splitP > 0.15);
+    if (cut02Aside) cut02Aside.setAttribute("aria-hidden", splitP < 0.2 ? "true" : "false");
+
+    const targetPopups = Math.min(MAX_POPUPS, Math.round(progress * MAX_POPUPS * 1.2));
+    while (popupStack && popupStack.children.length < targetPopups) spawnPopups(1);
+
+  }
+
+  const LOG_ALIAS = [
+    ["scrollSpeed", "scroll_speed"],
+    ["pointer", "cursor_move"],
+    ["pointer.trail", "cursor_trail"],
+    ["Intl.timeZone", "timezone"],
+    ["navigator.language", "language"],
+    ["window.inner", "viewport"],
+    ["Date", "timestamp"],
+  ];
+
+  function friendlyLogLine(key, value) {
+    const alias = LOG_ALIAS.find(([k]) => k === key);
+    const label = alias ? alias[1] : key;
+    const time = new Date().toTimeString().slice(0, 8);
+    return time + " " + label + "=" + value;
+  }
+
+  function updateScene03() {
+    if (!cut03 || !obsLog) return;
+    const progress = sceneProgress(cut03);
+    const data = snapshot();
+    const lines = ORDERED_KEYS.map((key) => friendlyLogLine(key, data[key]));
+    const visible = Math.max(1, Math.round(progress * lines.length * 0.85));
+    while (obsLog.children.length < visible) {
+      const li = document.createElement("li");
+      li.textContent = lines[obsLog.children.length] || "";
+      obsLog.appendChild(li);
+    }
+
+    if (stateApi) {
+      profileLabelData = stateApi.buildProfileLabels(data, COPY);
+      const labelStart = Math.round(progress * profileLabelData.length);
+      while (profileLabels.children.length < labelStart) {
+        const item = profileLabelData[profileLabels.children.length];
+        const li = document.createElement("li");
+        li.textContent = "「" + item.text + "」";
+        li.dataset.labelId = item.id;
+        profileLabels.appendChild(li);
+      }
+      if (progress > 0.75 && profileSummary) {
+        profileSummary.textContent = stateApi.summaryLabel(profileLabelData);
+      }
+      if (idleHint) {
+        const idle = stateApi.isIdle();
+        idleHint.hidden = !idle;
+        if (idle) idleHint.textContent = COPY.scene03Idle || "";
+      }
+    }
+
+    const converge = clamp((progress - 0.92) / 0.08, 0, 1);
+    if (popupStack) popupStack.style.setProperty("--converge", String(converge));
+  }
+
+  function labelVars(labels) {
+    const map = {};
+    labels.forEach((l) => {
+      map[l.id] = l.text;
+    });
+    return {
+      time: map.time || "",
+      scroll: map.scroll || "",
+      device: map.device || "",
+      region: map.region || "",
+    };
+  }
+
+  function fillCardTemplate(type, vars) {
+    const tpl = CARD_TEMPLATES[type] || "「맞춤」";
+    return tpl.replace(/\{(\w+)\}/g, (_, key) => vars[key] || "");
+  }
+
+  const CARD_TYPES = ["ad", "video", "spam", "notify", "news"];
+
+  function buildFeedCards() {
+    if (!cardGrid || cardGrid.dataset.built) return;
+    cardGrid.dataset.built = "1";
+    const data = snapshot();
+    profileLabelData = stateApi.buildProfileLabels(data, COPY);
+    const vars = labelVars(profileLabelData);
+    for (let i = 0; i < 24; i += 1) {
+      const type = CARD_TYPES[i % CARD_TYPES.length];
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "feed-card";
+      card.dataset.cardType = type;
+      card.dataset.feed = type === "video" ? "youtube" : type === "ad" ? "ad" : type === "spam" ? "spam" : "ad";
+      const body = document.createElement("span");
+      body.className = "feed-card__body";
+      body.textContent = fillCardTemplate(type, vars);
+      const why = document.createElement("span");
+      why.className = "feed-card__why";
+      why.hidden = true;
+      const signal = type === "video" ? "scrollSpeed" : type === "ad" ? "prefers-color-scheme" : "document.cookie";
+      const label = profileLabelData.find((l) => l.id === "scroll" || l.id === "dark") || profileLabelData[0];
+      why.textContent = (COPY.cardWhy || "") + " " + signal + " → " + (label ? label.text : "") + " → 이 카드";
+      card.append(body, why);
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        addSimilarCards(type, vars, 3);
+      });
+      if (finePointer) {
+        card.addEventListener("mouseenter", () => {
+          why.hidden = false;
+        });
+        card.addEventListener("mouseleave", () => {
+          why.hidden = true;
+        });
+      } else {
+        card.addEventListener("focus", () => {
+          why.hidden = false;
+        });
+        card.addEventListener("blur", () => {
+          why.hidden = true;
+        });
+      }
+      cardGrid.appendChild(card);
+    }
+  }
+
+  function addSimilarCards(type, vars, n) {
+    for (let i = 0; i < n; i += 1) {
+      customCardCount += 1;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "feed-card feed-card--spawned";
+      card.dataset.cardType = type;
+      const body = document.createElement("span");
+      body.className = "feed-card__body";
+      body.textContent = fillCardTemplate(type, vars) + " +" + customCardCount;
+      card.appendChild(body);
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        addSimilarCards(type, vars, 3);
+      });
+      cardGrid.appendChild(card);
+    }
+    updateScene04();
+  }
+
+  function updateScene04() {
+    if (!cut04 || !cardGrid) return;
+    buildFeedCards();
+    const progress = sceneProgress(cut04);
+    const total = cardGrid.children.length;
+    const show = Math.min(total, Math.max(3, Math.round(3 + progress * 21)));
+    [...cardGrid.children].forEach((el, i) => {
+      el.hidden = i >= show;
+    });
+    if (scene04End) {
+      scene04End.hidden = progress < 0.88;
+      scene04End.textContent = COPY.scene04End || "";
+    }
+  }
+
+  function updateScene05UI() {
+    if (!cut05) return;
+    const progress = sceneProgress(cut05);
+    if (progress > 0.05 && !windowsBuilt) {
+      buildWindows(true);
+      windowsBuilt = true;
+    }
+    if (progress > 0.08 && !scene05Frozen) {
+      scene05Frozen = true;
+      document.body.classList.add("scene05-freeze");
+      window.setTimeout(() => {
+        scene05RedEnabled = true;
+        document.body.classList.add("scene05-red");
+        const firstClose = windowsRoot?.querySelector(".window__close");
+        if (firstClose) firstClose.classList.add("window__close--red");
+        if (scene05Intro) {
+          scene05Intro.hidden = false;
+          scene05Intro.textContent = COPY.scene05Intro || "";
+        }
+      }, reduced ? 0 : 600);
+    }
+    updateCardCounter();
+    if (progress > 0.22 && progress < 0.72 && windowsRoot) {
+      const cols = 3;
+      [...windowsRoot.children].forEach((win, i) => {
+        if (win.style.position === "absolute") return;
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        win.style.gridColumn = (1 + col * 4) + " / span 4";
+        win.style.marginTop = row * 0.75 + "rem";
+      });
+    }
+    if (progress > 0.7 && closing && windowsRoot && !windowsRoot.children.length) {
+      showClosingLabels();
+    }
+  }
+
+  function updateCardCounter() {
+    if (!scene05Counter || !windowsRoot) return;
+    const n = windowsRoot.children.length;
+    scene05Counter.hidden = n === 0 && closing && !closing.hidden;
+    if (!scene05Counter.hidden) {
+      scene05Counter.textContent = (COPY.scene05Counter || "남은 맞춤 카드") + " " + n;
+    }
+  }
+
+  function showClosingLabels() {
+    if (!removableLabels || removableLabels.dataset.filled) return;
+    removableLabels.dataset.filled = "1";
+    const data = snapshot();
+    profileLabelData = stateApi.buildProfileLabels(data, COPY);
+    profileLabelData.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item.text;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "삭제";
+      btn.addEventListener("click", () => li.remove());
+      li.appendChild(btn);
+      removableLabels.appendChild(li);
+    });
+    closing.hidden = false;
+    windowsRoot.hidden = true;
+    document.body.classList.remove("is-dark");
+    if (window.applySceneCopy) window.applySceneCopy();
+  }
+
+  function syncClosing() {
+    const any = windowsRoot && windowsRoot.children.length > 0;
+    if (windowsRoot) windowsRoot.hidden = !any;
+    if (closing) closing.hidden = any;
+    if (!any && !removableLabels?.dataset.filled) document.body.classList.remove("is-dark");
+    updateCardCounter();
+    if (!any && sceneProgress(cut05) > 0.65) showClosingLabels();
+  }
+
+  function buildWindows(fromScene5) {
+    if (!windowsRoot) return;
+    windowsRoot.innerHTML = "";
+    const cards = cardGrid ? [...cardGrid.querySelectorAll(".feed-card:not([hidden])")] : [];
+    const count = Math.min(24, Math.max(6, cards.length || 12));
+    for (let i = 0; i < count; i += 1) {
+      const feed = i % 3 === 0 ? "youtube" : i % 3 === 1 ? "ad" : "spam";
+      const names = { youtube: "추천", ad: "광고", spam: "스팸" };
+      const el = document.createElement("div");
+      el.className = "window";
+      el.dataset.feed = feed;
+      el.dataset.windowIndex = String(i + 1);
+      el.style.gridColumn = (1 + (i % 4) * 3) + " / span 4";
+      el.style.zIndex = String(i + 1);
+      const head = document.createElement("div");
+      head.className = "window__head";
+      const title = document.createElement("span");
+      title.className = "feed-name";
+      title.textContent = names[feed];
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "window__close";
+      closeBtn.textContent = "×";
+      closeBtn.setAttribute("aria-label", "닫기");
+      closeBtn.addEventListener("click", () => {
+        el.remove();
+        syncClosing();
+      });
+      head.append(title, closeBtn);
+      const body = document.createElement("span");
+      body.className = "log";
+      el.append(head, body);
+
+      let drag = null;
+      el.addEventListener("pointerdown", (event) => {
+        if (event.target.closest(".window__close")) return;
+        if (event.button !== 0) return;
+        const parent = windowsRoot.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
+        drag = {
+          x: event.clientX,
+          y: event.clientY,
+          left: rect.left - parent.left,
+          top: rect.top - parent.top,
+          width: rect.width,
+          moved: false,
+        };
+        el.setPointerCapture(event.pointerId);
+      });
+      el.addEventListener("pointermove", (event) => {
+        if (!drag || !el.hasPointerCapture(event.pointerId)) return;
+        const dx = event.clientX - drag.x;
+        const dy = event.clientY - drag.y;
+        if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+        if (!drag.moved) {
+          drag.moved = true;
+          el.style.position = "absolute";
+          el.style.width = drag.width + "px";
+        }
+        el.style.left = drag.left + dx + "px";
+        el.style.top = drag.top + dy + "px";
+      });
+      el.addEventListener("pointerup", () => {
+        drag = null;
+      });
+
+      windowsRoot.appendChild(el);
+    }
+    syncClosing();
+    renderFeedWindows();
+    if (fromScene5) document.body.classList.add("is-dark");
+  }
+
+  function renderFeedWindows() {
+    const data = snapshot();
+    windowsRoot?.querySelectorAll(".window").forEach((win) => {
+      const keys = FEEDS[win.dataset.feed];
+      const log = win.querySelector(".log");
+      if (log && keys) log.textContent = formatKeys(data, keys);
+    });
+  }
+
+  function updateChrome() {
+    const doc = document.documentElement;
+    const max = doc.scrollHeight - window.innerHeight;
+    const p = max > 0 ? window.scrollY / max : 0;
+    if (scrollProgressEl) scrollProgressEl.style.transform = "scaleX(" + p + ")";
+
+    const y = window.scrollY + window.innerHeight * 0.3;
+    let scene = 1;
+    document.querySelectorAll("[data-scene]").forEach((el) => {
+      const top = el.offsetTop;
+      if (top <= y) scene = Number(el.dataset.scene) || scene;
+    });
+    currentScene = scene;
+    if (sceneLabel) sceneLabel.textContent = "SCENE " + String(scene).padStart(2, "0") + " / 05";
+    if (recTimeEl && stateApi) {
+      const sec = stateApi.getSessionSeconds();
+      recTimeEl.textContent = stateApi.formatRecTime(sec);
+    }
   }
 
   function pixelLum(data, index) {
@@ -233,12 +720,7 @@
       }
     }
     eyeImage = image;
-    eyeCrop = {
-      x: minX,
-      y: minY,
-      w: Math.max(1, maxX - minX + 1),
-      h: Math.max(1, maxY - minY + 1),
-    };
+    eyeCrop = { x: minX, y: minY, w: Math.max(1, maxX - minX + 1), h: Math.max(1, maxY - minY + 1) };
     paintEye(performance.now());
   }
 
@@ -284,8 +766,8 @@
     plateCtx.drawImage(eyeImage, eyeCrop.x, eyeCrop.y, eyeCrop.w, eyeCrop.h, originX, originY, drawW, drawH);
     const pixels = plateCtx.getImageData(0, 0, plate.width, plate.height).data;
     const t = (now || 0) * 0.001;
-    const amp = reduced ? 0 : oversample * 1.15;
-    const heave = reduced ? 0 : oversample * 0.85;
+    const amp = reduced || eyeStill ? 0 : oversample * 1.15;
+    const heave = reduced || eyeStill ? 0 : oversample * 0.85;
     const width = plate.width;
     const height = plate.height;
     let text = "";
@@ -312,9 +794,8 @@
     eyeEl.textContent = text;
   }
 
-  const cross = document.getElementById("cross");
   const watchDive = document.getElementById("watch-dive");
-  const LANDING_FOCAL_Y = 0.48;
+  const LANDING_FOCAL_Y = 0.5;
 
   function landingProgress() {
     const space = document.getElementById("cut-01");
@@ -327,26 +808,18 @@
     if (!el) return;
     if (scale <= 1.001) {
       el.style.transform = "";
+      el.style.transformOrigin = "";
       el.classList.remove("is-zooming");
       return;
     }
-    const w = el.clientWidth || window.innerWidth;
-    const h = el.clientHeight || window.innerHeight;
-    const ox = w * 0.5;
-    const oy = h * focalY;
+    const rect = el.getBoundingClientRect();
+    const w = rect.width || el.clientWidth || window.innerWidth;
+    const h = rect.height || el.clientHeight || window.innerHeight;
+    const originX = clamp(((window.innerWidth / 2 - rect.left) / w) * 100, 0, 100);
+    const originY = clamp(((window.innerHeight * focalY - rect.top) / h) * 100, 0, 100);
     el.classList.add("is-zooming");
-    el.style.transform =
-      "translate(" + ox + "px," + oy + "px) scale(" + scale + ") translate(" + -ox + "px," + -oy + "px)";
-  }
-
-  function resetLandingVisuals(lightPage) {
-    setCenterScale(watchDive, 1, LANDING_FOCAL_Y);
-    if (cross) {
-      cross.style.opacity = "0";
-      cross.style.webkitMaskImage = "none";
-      cross.style.maskImage = "none";
-    }
-    if (lightPage) document.body.classList.remove("is-dark");
+    el.style.transformOrigin = originX + "% " + originY + "%";
+    el.style.transform = "scale(" + scale + ")";
   }
 
   function updateInvert() {
@@ -355,398 +828,42 @@
     const rect = space.getBoundingClientRect();
     const inLanding = rect.bottom > 0 && rect.top < window.innerHeight;
     if (!inLanding) {
-      resetLandingVisuals(rect.bottom <= 0);
+      setCenterScale(watchDive, 1, LANDING_FOCAL_Y);
+      if (rect.bottom <= 0) document.body.classList.remove("is-dark");
       eyeStill = false;
       return;
     }
-
     const progress = landingProgress();
     const diveMax = reduced ? 4 : 14;
     const zoom = clamp((progress - 0.05) / 0.72, 0, 1);
     const zoomEased = zoom * zoom * (3 - 2 * zoom);
     const scale = 1 + Math.pow(zoomEased, 1.15) * diveMax;
-    const tunnelIn = clamp((progress - 0.38) / 0.42, 0, 1);
-    const tunnelOut = clamp((progress - 0.86) / 0.14, 0, 1);
-    const overlay = tunnelIn * tunnelIn * (1 - tunnelOut);
-
     if (progress > 0.03 && progress < 0.92) eyeStill = true;
     else if (progress <= 0.02) eyeStill = false;
-
     setCenterScale(watchDive, scale, LANDING_FOCAL_Y);
-
-    if (cross) {
-      cross.style.opacity = String(overlay);
-      const pupil = Math.max(2, (1 - tunnelIn * 0.98) * 95);
-      if (overlay > 0.02 && tunnelOut < 0.98) {
-        const mask =
-          "radial-gradient(circle at 50% " +
-          LANDING_FOCAL_Y * 100 +
-          "%, transparent 0, transparent " +
-          pupil +
-          "vh, #000 " +
-          (pupil + 3) +
-          "vh)";
-        cross.style.webkitMaskImage = mask;
-        cross.style.maskImage = mask;
-      } else {
-        cross.style.webkitMaskImage = "none";
-        cross.style.maskImage = "none";
-      }
-    }
-
-    document.body.classList.toggle("is-dark", progress < 0.82 || overlay > 0.12);
+    document.body.classList.toggle("is-dark", progress < 0.82);
   }
 
-  function updatePager() {
-    const y = window.scrollY + window.innerHeight * 0.28;
-    let current = "01.1";
-    document.querySelectorAll("[data-cut]").forEach((el) => {
-      const top = el.getBoundingClientRect().top + window.scrollY;
-      if (top <= y) current = el.dataset.cut;
-    });
-    currentCut = current;
-  }
-
-  function renderDiagram(data) {
-    const lines = ORDERED_KEYS.map((key) => key + "=" + data[key]);
-    const showAll = reduced || narrow.matches || travel.offsetHeight < 8;
-    let offset = 0;
-    let count = lines.length;
-    if (!showAll) {
-      const span = travel.offsetHeight;
-      const progress = clamp((window.scrollY - cut03.offsetTop) / span, 0, 1);
-      count = 6;
-      offset = Math.round(progress * Math.max(lines.length - count, 0));
-    }
-    while (diagram.children.length < count) diagram.appendChild(document.createElement("li"));
-    while (diagram.children.length > count) diagram.lastElementChild.remove();
-    for (let i = 0; i < count; i += 1) {
-      const line = lines[offset + i] || "";
-      const row = diagram.children[i];
-      row.textContent = line;
-      row.classList.toggle("diagram-live-key", line.startsWith(LIVE_DIAGRAM_KEY + "="));
-    }
-    if (conduitEl) {
-      const tail = Math.min(12, Math.round(offset / 2));
-      conduitEl.textContent = "===●===" + ">".repeat(tail);
-    }
-  }
-
-  function renderLive() {
-    const data = snapshot();
-    rawLog.textContent = formatKeys(data, ORDERED_KEYS);
-    renderDiagram(data);
-    document.querySelectorAll("[data-feed]").forEach((node) => {
-      const keys = FEEDS[node.dataset.feed];
-      if (!keys) return;
-      const log = node.classList.contains("log") ? node : node.querySelector(".log");
-      if (log) log.textContent = formatKeys(data, keys);
-    });
-    document.querySelectorAll(".detail").forEach((detail) => {
-      if (detail.hidden) return;
-      detail.textContent = formatKeys(data, DETAILS[detail.dataset.detail]);
-    });
-  }
-
-  function measureScene02() {
-    if (!cut02) return;
-    scene02Top = cut02.offsetTop;
-  }
-
-  function scene02Progress() {
-    if (!cut02) return 0;
-    const span = Math.max(cut02.offsetHeight - window.innerHeight, 1);
-    return clamp((window.scrollY - scene02Top) / span, 0, 1);
-  }
-
-  function easeInOut(t) {
-    return t * t * (3 - 2 * t);
-  }
-
-  function cookieTokens(data) {
-    const raw = data["document.cookie"];
-    const parts = raw && raw.trim() ? raw.split(";").map((part) => part.trim()).filter(Boolean) : [];
-    if (parts.length) return parts;
-    return DETAILS.cookie.map((key) => {
-      const value = data[key] == null ? "" : data[key];
-      return key + "=" + value;
-    });
-  }
-
-  function setDataWord(el, token) {
-    const eq = token.indexOf("=");
-    if (eq > -1) {
-      const key = token.slice(0, eq);
-      const value = token.slice(eq + 1);
-      const short = value.length > 36 ? value.slice(0, 33) + "…" : value;
-      const safeKey = key.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-      const safeVal = short.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-      el.innerHTML = '<span class="mix-word-key">' + safeKey + "</span>=" + safeVal;
-      el.dataset.dataKey = key;
-    } else {
-      el.textContent = token;
-      delete el.dataset.dataKey;
-    }
-    el.classList.add("mix-word--data");
-  }
-
-  function refreshMixReplaceTokens() {
-    mixReplaceTokens = cookieTokens(snapshot());
-  }
-
-  function applyMixReplace(count) {
-    if (!mixWordEls.length) return;
-    const capped = clamp(count, 0, mixWordEls.length);
-    if (!mixReplaceTokens || capped === 0) {
-      mixWordEls.forEach((el) => {
-        el.textContent = el.dataset.original;
-        el.classList.remove("mix-word--data", "mix-word--subject");
-        delete el.dataset.dataKey;
-      });
-      return;
-    }
-    const tokens = mixReplaceTokens;
-    mixWordEls.forEach((el, index) => {
-      if (index >= capped) {
-        el.textContent = el.dataset.original;
-        el.classList.remove("mix-word--data", "mix-word--subject");
-        delete el.dataset.dataKey;
-        return;
-      }
-      setDataWord(el, tokens[index % tokens.length]);
-    });
-  }
-
-  function buildMixWordDom() {
-    mix.innerHTML = "";
-    mixWordEls = [];
-    const block = document.createElement("p");
-    block.className = "mix-para";
-    const words = mixFullText().match(/\S+/g) || [];
-    words.forEach((word, index) => {
-      if (index > 0) block.append(" ");
-      const span = document.createElement("span");
-      span.className = "mix-word";
-      span.dataset.original = word;
-      span.textContent = word;
-      block.appendChild(span);
-      mixWordEls.push(span);
-    });
-    mix.appendChild(block);
-  }
-
-  function finalizeMixAfterType() {
-    if (mixRevealDone) return;
-    mixTyping = false;
-    buildMixWordDom();
-    mixRevealDone = true;
-    refreshMixReplaceTokens();
+  function onScroll() {
+    const now = performance.now();
+    const dy = window.scrollY - lastScrollY;
+    const dt = now - lastScrollT || 1;
+    scrollSpeed = (dy / dt) * 1000;
+    lastScrollY = window.scrollY;
+    lastScrollT = now;
+    updateInvert();
+    updateChrome();
     updateScene02();
-  }
-
-  function runMixTypewriter() {
-    if (mixTyping) return;
-    mixTyping = true;
-    const full = mixFullText();
-    mix.innerHTML = "";
-    const block = document.createElement("p");
-    block.className = "mix-para";
-    mix.appendChild(block);
-    let index = 0;
-    const step = () => {
-      if (!mixTyping) return;
-      index = Math.min(full.length, index + (reduced ? full.length : 4));
-      block.textContent = full.slice(0, index);
-      if (index < full.length) {
-        requestAnimationFrame(step);
-        return;
-      }
-      finalizeMixAfterType();
-    };
-    requestAnimationFrame(step);
-  }
-
-  function updateScene02() {
-    if (!sheet02 || !cut02) return;
-    const progress = scene02Progress();
-    let replaceTarget = 0;
-    let split = 0;
-
-    if (progress < SCENE02_REPLACE_START - 0.05) scene02Complete = false;
-
-    if (scene02Complete || progress >= SCENE02_SPLIT_END) {
-      scene02Complete = true;
-      if (mixRevealDone && mixWordEls.length) {
-        replaceTarget = mixWordEls.length;
-        split = 1;
-      }
-    } else if (mixRevealDone && mixWordEls.length) {
-      const replaceProgress = easeInOut(
-        clamp((progress - SCENE02_REPLACE_START) / (SCENE02_REPLACE_END - SCENE02_REPLACE_START), 0, 1),
-      );
-      replaceTarget = Math.round(replaceProgress * mixWordEls.length);
-      const splitProgress = easeInOut(
-        clamp((progress - SCENE02_SPLIT_START) / (SCENE02_SPLIT_END - SCENE02_SPLIT_START), 0, 1),
-      );
-      split = splitProgress;
-    }
-
-    if (replaceTarget !== mixReplaceCount) {
-      mixReplaceCount = replaceTarget;
-      if (mixReplaceCount > 0 && !mixReplaceTokens) refreshMixReplaceTokens();
-      applyMixReplace(mixReplaceCount);
-    }
-
-    scene02Split = split;
-    sheet02.style.setProperty("--scene02-split", String(split));
-    sheet02.classList.toggle("is-split", split > 0.2);
-    if (cut02Aside) {
-      cut02Aside.setAttribute("aria-hidden", split < 0.35 ? "true" : "false");
-    }
-  }
-
-  function startMix() {
-    if (mixStarted) return;
-    mixStarted = true;
-    runMixTypewriter();
-  }
-
-  function setMixSubjectHighlight(detailId) {
-    document.querySelectorAll(".mix-word").forEach((el) => {
-      el.classList.remove("mix-word--subject");
-    });
-    if (!detailId) return;
-    const keys = DETAILS[detailId];
-    if (!keys) return;
-    mixWordEls.forEach((el) => {
-      const key = el.dataset.dataKey;
-      if (key && keys.includes(key)) el.classList.add("mix-word--subject");
-    });
-  }
-
-  function bindSubjects() {
-    const items = [...document.querySelectorAll("#subjects li")];
-    const closeAll = () => {
-      items.forEach((item) => {
-        item.querySelector(".detail").hidden = true;
-        item.querySelector("button").setAttribute("aria-expanded", "false");
-      });
-      setMixSubjectHighlight(null);
-    };
-    items.forEach((item) => {
-      const button = item.querySelector("button");
-      const detail = item.querySelector(".detail");
-      const open = () => {
-        closeAll();
-        detail.hidden = false;
-        button.setAttribute("aria-expanded", "true");
-        setMixSubjectHighlight(detail.dataset.detail);
-        renderLive();
-      };
-      const close = () => {
-        detail.hidden = true;
-        button.setAttribute("aria-expanded", "false");
-        setMixSubjectHighlight(null);
-      };
-      if (finePointer) {
-        item.addEventListener("mouseenter", open);
-        item.addEventListener("mouseleave", close);
-        button.addEventListener("focus", open);
-        button.addEventListener("blur", close);
-      } else {
-        button.addEventListener("click", () => {
-          const willOpen = detail.hidden;
-          closeAll();
-          if (willOpen) open();
-        });
-      }
-    });
-  }
-
-  function syncClosing() {
-    const any = windowsRoot.children.length > 0;
-    windowsRoot.hidden = !any;
-    closing.hidden = any;
-    if (!any) document.body.classList.remove("is-dark");
-  }
-
-  function buildWindows() {
-    const spec = [
-      ["유튜브", "youtube", "1 / 5"],
-      ["광고", "ad", "5 / 9"],
-      ["스팸", "spam", "9 / 13"],
-      ["유튜브", "youtube", "1 / 5"],
-      ["광고", "ad", "5 / 9"],
-      ["스팸", "spam", "9 / 13"],
-    ];
-    spec.forEach(([name, feed, column]) => {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.className = "window";
-      el.dataset.feed = feed;
-      el.style.gridColumn = column;
-      const title = document.createElement("span");
-      title.className = "feed-name";
-      title.textContent = name;
-      const body = document.createElement("span");
-      body.className = "log";
-      el.append(title, body);
-
-      let drag = null;
-      el.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
-        const parent = windowsRoot.getBoundingClientRect();
-        const rect = el.getBoundingClientRect();
-        drag = {
-          x: event.clientX,
-          y: event.clientY,
-          left: rect.left - parent.left,
-          top: rect.top - parent.top,
-          width: rect.width,
-          moved: false,
-        };
-        el.setPointerCapture(event.pointerId);
-      });
-      el.addEventListener("pointermove", (event) => {
-        if (!drag || !el.hasPointerCapture(event.pointerId)) return;
-        const dx = event.clientX - drag.x;
-        const dy = event.clientY - drag.y;
-        if (!drag.moved && Math.hypot(dx, dy) < 5) return;
-        if (!drag.moved) {
-          drag.moved = true;
-          el.style.position = "absolute";
-          el.style.width = drag.width + "px";
-          el.style.zIndex = "2";
-        }
-        el.style.left = drag.left + dx + "px";
-        el.style.top = drag.top + dy + "px";
-      });
-      el.addEventListener("pointerup", () => {
-        if (drag && drag.moved) el.dataset.dragged = "1";
-        drag = null;
-      });
-      el.addEventListener("click", () => {
-        if (el.dataset.dragged === "1") {
-          el.dataset.dragged = "";
-          return;
-        }
-        el.remove();
-        syncClosing();
-      });
-      el.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        el.remove();
-        syncClosing();
-      });
-      windowsRoot.appendChild(el);
-    });
+    updateScene03();
+    updateScene04();
+    updateScene05UI();
   }
 
   function frame(now) {
     const dt = now - lastTick;
     lastTick = now;
-    dwell[currentCut] = (dwell[currentCut] || 0) + dt;
+    const cutKey = "scene" + currentScene;
+    dwell[cutKey] = (dwell[cutKey] || 0) + dt;
     if (eyeImage && !eyeStill && now - lastDraw > 64) {
       lastDraw = now;
       paintEye(now);
@@ -755,9 +872,20 @@
     requestAnimationFrame(frame);
   }
 
+  function renderLive() {
+    renderFeedWindows();
+  }
+
   gpu = readGpu();
-  buildWindows();
-  bindSubjects();
+
+  const restartBtn = document.getElementById("restart-btn");
+  if (restartBtn) {
+    restartBtn.addEventListener("click", () => {
+      window.scrollTo(0, 0);
+      location.reload();
+    });
+  }
+
   const eyePicture = new Image();
   eyePicture.onload = () => prepareEye(eyePicture);
   eyePicture.src = "eye.png";
@@ -769,17 +897,7 @@
     if (trail.length > 20) trail.shift();
   }, { passive: true });
 
-  window.addEventListener("scroll", () => {
-    const now = performance.now();
-    const dy = window.scrollY - lastScrollY;
-    const dt = now - lastScrollT || 1;
-    scrollSpeed = (dy / dt) * 1000;
-    lastScrollY = window.scrollY;
-    lastScrollT = now;
-    updateInvert();
-    updatePager();
-    updateScene02();
-  }, { passive: true });
+  window.addEventListener("scroll", onScroll, { passive: true });
 
   window.addEventListener("resize", () => {
     resizeCount += 1;
@@ -788,7 +906,7 @@
     paintEye(performance.now());
     measureScene02();
     updateInvert();
-    updateScene02();
+    onScroll();
     renderLive();
   });
 
@@ -805,28 +923,20 @@
 
   window.addEventListener("deviceorientation", (event) => {
     if (event.alpha == null) return;
-    tilt = [event.alpha, event.beta, event.gamma].map((value) => Math.round(value || 0)).join(" ");
+    tilt = [event.alpha, event.beta, event.gamma].map((v) => Math.round(v || 0)).join(" ");
   });
 
-  function bootScene02() {
-    measureScene02();
-    if (mixStarted || !cut02) return;
-    const rect = cut02.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.85 && rect.bottom > window.innerHeight * 0.15) startMix();
-  }
-
-  const mixWatcher = new IntersectionObserver((entries) => {
-    if (entries.some((entry) => entry.isIntersecting)) startMix();
-  }, { threshold: 0.12 });
-  mixWatcher.observe(cut02);
-  window.addEventListener("load", bootScene02);
-  requestAnimationFrame(bootScene02);
+  const streamWatcher = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) startStream();
+  }, { threshold: 0.1 });
+  if (cut02) streamWatcher.observe(cut02);
 
   measureScene02();
   updateInvert();
-  updatePager();
-  updateScene02();
-  renderLive();
+  updateChrome();
+  onScroll();
   requestAnimationFrame(frame);
-  setInterval(renderLive, 300);
+  setInterval(renderLive, 400);
+
+  if (window.applySceneCopy) window.applySceneCopy();
 })();
