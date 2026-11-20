@@ -112,6 +112,12 @@
     return "이 페이지에 머문 시간: " + Math.max(1, Math.round(total / 60000)) + "분";
   }
 
+  function visitLabel(data) {
+    const m = (data["document.cookie"] || "").match(/(?:^|;\s*)visits=(\d+)/);
+    const n = m ? Number(m[1]) : 1;
+    return n > 1 ? "재방문 사용자: " + n + "번째 방문" : "첫 방문 (쿠키가 저장됨)";
+  }
+
   function buildProfileLabels(data, copy) {
     const labels = [
       { id: "time", text: hourBucket(data) },
@@ -124,6 +130,7 @@
       { id: "scroll", text: scrollHabit(data) },
       { id: "cursor", text: cursorHesitation(data) },
       { id: "dwell", text: dwellMinutes(data) },
+      { id: "visit", text: visitLabel(data) },
       { id: "interest", text: interestFromPopup(getTopHoveredPopup(), copy) },
     ];
     if (idleActive) labels.push({ id: "idle", text: "가만히 있음" });

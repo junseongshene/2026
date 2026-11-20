@@ -1,14 +1,22 @@
+/* All copy. Orwell excerpts are verbatim from 1984.txt (English, public domain in Australia);
+   `line` is the line number in 1984.txt where the excerpt starts. UI copy is Korean. */
 (() => {
+  const Q = {
+    eyes: { line: 62, text: "It was one of those pictures which are so contrived that the eyes follow you about when you move. BIG BROTHER IS WATCHING YOU, the caption beneath it ran." },
+    dimmed: { line: 70, text: "The instrument (the telescreen, it was called) could be dimmed, but there was no way of shutting it off completely." },
+    simultaneous: { line: 94, text: "The telescreen received and transmitted simultaneously." },
+    overheard: { line: 104, text: "You had to live--did live, from habit that became instinct--in the assumption that every sound you made was overheard, and, except in darkness, every movement scrutinized." },
+    thoughtPolice: { line: 0, text: "It was the police patrol, snooping into people's windows. The patrols did not matter, however. Only the Thought Police mattered." },
+  };
+
   const mixChunks = [
-    "On each landing, opposite the lift-shaft, the poster with the enormous face gazed from the wall. It was one of those pictures which are so contrived that the eyes follow you about when you move. BIG BROTHER IS WATCHING YOU, the caption beneath it ran.",
+    Q.eyes.text,
     "The instrument (the telescreen, it was called) could be dimmed, but there was no way of shutting it off completely.",
     "The black-moustachio'd face gazed down from every commanding corner. There was one on the house-front immediately opposite. BIG BROTHER IS WATCHING YOU, the caption said, while the dark eyes looked deep into Winston's own.",
-    "It was the police patrol, snooping into people's windows. The patrols did not matter, however. Only the Thought Police mattered.",
+    Q.thoughtPolice.text,
     "Behind Winston's back the voice from the telescreen was still babbling away about pig-iron and the overfulfilment of the Ninth Three-Year Plan. The telescreen received and transmitted simultaneously.",
-    "You had to live--did live, from habit that became instinct--in the assumption that every sound you made was overheard, and, except in darkness, every movement scrutinized.",
+    Q.overheard.text,
   ];
-
-  const streamRefrain = "BIG BROTHER IS WATCHING YOU";
 
   const popups = [
     { id: "cookie", name: "쿠키", message: "당신이 어디를 다녀갔는지 기억합니다.", detailKey: "cookie" },
@@ -26,113 +34,42 @@
     popupSubjects[p.id] = p.name;
   });
 
-  const excerpts = {
-    "03": [
-      "You had to live--did live, from habit that became instinct--in the assumption that every sound you made was overheard, and, except in darkness, every movement scrutinized.",
-      "Behind Winston's back the voice from the telescreen was still babbling away about pig-iron and the overfulfilment of the Ninth Three-Year Plan.",
-    ],
-    "04": [
-      "On each landing, opposite the lift-shaft, the poster with the enormous face gazed from the wall.",
-      "although every day and a thousand times a day, on platforms, on the telescreen, in newspapers, in books, his theories were refuted, smashed, ridiculed, held up to the general gaze for the pitiful rubbish that they were--in spite of all this, his influence never seemed to grow less.",
-    ],
-  };
-
-  const cardTemplates = {
-    ad: "「{time}인 당신에게만: 오늘 밤 12시까지 쿠폰 30%」",
-    video: "「{scroll} 당신을 위한 추천: 3분 안에 끝나는 영상 12선」",
-    spam: "「[Web발신] {device} 고객님, 확인되지 않은 결제가 있습니다.」",
-    notify: "「당신과 비슷한 사람들은 이것도 봤습니다.」",
-    news: "「당신이 동의할 만한 기사만 모았습니다.」",
-  };
+  const cardTypes = [
+    { type: "ad", tag: "AD", signal: "prefers-color-scheme", label: "dark", tpl: "{time}인 당신에게만: 오늘 밤 12시까지 쿠폰 30%" },
+    { type: "video", tag: "VIDEO", signal: "scrollSpeed", label: "scroll", tpl: "{scroll} 당신을 위한 추천: 3분 안에 끝나는 영상 12선" },
+    { type: "spam", tag: "SMS", signal: "document.cookie", label: "device", tpl: "[Web발신] {device} 고객님, 확인되지 않은 결제가 있습니다." },
+    { type: "notify", tag: "NOTI", signal: "navigator.language", label: "region", tpl: "당신과 비슷한 사람들은 이것도 봤습니다." },
+    { type: "news", tag: "FEED", signal: "dwell", label: "dwell", tpl: "당신이 동의할 만한 기사만 모았습니다." },
+  ];
 
   window.SCENE_COPY = {
-    title: "2026",
+    quotes: Q,
+    hero: "1984는 더 이상 픽션이 아니다.",
+    heroSub: [
+      "당신은 지금 이 화면을 보고 있다. 그리고 이 화면도 당신을 보고 있다.",
+      "당신의 모든 움직임은 데이터로 서버에 기록된다.",
+    ],
     scene02Header: "Who Is Watching",
+    scene02Hint: "팝업을 닫아 보세요. 마우스를 올리면 무엇을, 어떻게 보는지 나옵니다.",
     scene03Header: "This Is How You Are Read",
     scene03Sub: "생각보다 더 사소한 것들도 취합되고 있다.",
     scene03Idle: "아무것도 하지 않는 것도 데이터입니다.",
-    privacyNotice:
-      "이 페이지는 위 정보를 서버로 보내지 않습니다. 실제 서비스는 그렇지 않을 수 있습니다.",
+    privacyNotice: "이 페이지는 위 정보를 서버로 보내지 않습니다. 이 브라우저에 쿠키 3개(visitor_id, first_seen, visits)를 저장했고, 마지막 장면에서 직접 지울 수 있습니다. 실제 서비스는 그렇지 않을 수 있습니다.",
     scene04Header: "And This Is What They Call Personalization",
+    scene04Hint: "카드에 마우스를 올리면 왜 보이는지, 눌러서 '관심 있음'을 보내면 어떻게 되는지 확인하세요.",
     scene04End: "이것은 당신이 고른 것이 아니다.",
-    scene05Intro: "이번에는 닫을 수 있다.",
-    endingLines: [
-      "알고리즘은 당신을 읽는다. 당신도 알고리즘을 읽을 수 있다.",
-      "보이는 것을 의심하고, 보이지 않는 것을 물어라.",
-    ],
-    endingActions: [
-      "광고 맞춤 설정 확인하기",
-      "앱 권한 점검하기",
-      "쿠키는 기본적으로 거부하기",
-    ],
-    endingPrivacy: "이 페이지는 아무것도 저장하지 않았다. 창을 닫는 순간 당신의 기록은 사라진다.",
+    s5Dim: "밝기를 낮춰 보세요. 이 장치로 할 수 있는 일은 그것뿐입니다.",
+    s5Dark: "움직임은 보이지 않는다. 그러나 소리는 들린다.",
+    s5Erase: "길게 눌러 내 기록 지우기",
+    s5Erasing: "지우는 중",
+    s5Final: "여기서는 지워졌다. 다른 곳에서는?",
     restartLabel: "다시 읽히기",
-    cardWhy: "왜 이 카드가 보이나요?",
-    statLine:
-      "미국 성인의 약 81%는 기업의 데이터 수집이 주는 이익보다 위험이 크다고 느낀다. (퓨 리서치 센터)",
+    statLine: "미국 성인의 약 81%는 기업의 데이터 수집이 주는 이익보다 위험이 크다고 느낀다. (퓨 리서치 센터)",
     mixChunks,
-    streamRefrain,
+    streamRefrain: "BIG BROTHER IS WATCHING YOU",
     popups,
     popupSubjects,
-    cardTemplates,
-    excerpts,
-    closingQuote:
-      "Who controls the past controls the future: who controls the present controls the past.",
+    cardTypes,
+    cardWhy: "왜 이 카드가 보이나요?",
   };
-
-  function applySceneCopy() {
-    const copy = window.SCENE_COPY;
-    if (!copy) return;
-
-    document.querySelectorAll("[data-masthead-part] .masthead__title:not(.scene-header)").forEach((title) => {
-      title.textContent = copy.title;
-    });
-
-    const h02 = document.querySelector("[data-scene-header='02']");
-    if (h02 && copy.scene02Header) h02.textContent = copy.scene02Header;
-    const h03 = document.querySelector("[data-scene-header='03']");
-    if (h03 && copy.scene03Header) h03.textContent = copy.scene03Header;
-    const h04 = document.querySelector("[data-scene-header='04']");
-    if (h04 && copy.scene04Header) h04.textContent = copy.scene04Header;
-
-    document.querySelectorAll("[data-excerpt]").forEach((el) => {
-      const key = el.dataset.excerpt;
-      const paras = copy.excerpts[key];
-      if (!paras) return;
-      const index = Number(el.dataset.excerptIndex || 0);
-      if (paras[index]) el.textContent = paras[index];
-    });
-
-    const stat = document.getElementById("scene02-stat");
-    if (stat && copy.statLine) stat.textContent = copy.statLine;
-
-    const privacy = document.getElementById("privacy-notice");
-    if (privacy && copy.privacyNotice) privacy.textContent = copy.privacyNotice;
-
-    const s03sub = document.getElementById("scene03-sub");
-    if (s03sub && copy.scene03Sub) s03sub.textContent = copy.scene03Sub;
-
-    const closingQuote = document.getElementById("closing-quote");
-    if (closingQuote && copy.closingQuote) closingQuote.textContent = copy.closingQuote;
-
-    const endingA = document.getElementById("ending-lines");
-    if (endingA && copy.endingLines) {
-      endingA.innerHTML = copy.endingLines.map((line) => "<p class=\"prose\">" + line + "</p>").join("");
-    }
-    const actions = document.getElementById("ending-actions");
-    if (actions && copy.endingActions) {
-      actions.innerHTML = copy.endingActions.map((a) => "<li>" + a + "</li>").join("");
-    }
-    const endPriv = document.getElementById("ending-privacy");
-    if (endPriv && copy.endingPrivacy) endPriv.textContent = copy.endingPrivacy;
-    const restart = document.getElementById("restart-btn");
-    if (restart && copy.restartLabel) restart.textContent = copy.restartLabel;
-  }
-
-  window.applySceneCopy = applySceneCopy;
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", applySceneCopy);
-  } else {
-    applySceneCopy();
-  }
 })();

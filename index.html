@@ -3,105 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="styles.css?v=hybrid4">
+  <title>2026 — 1984는 더 이상 픽션이 아니다</title>
+  <link rel="preload" href="fonts/IBMPlexMono-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=s1">
 </head>
-<body class="is-dark">
-  <div class="chrome" id="chrome">
-    <div class="chrome__progress" id="scroll-progress" aria-hidden="true"></div>
-    <div class="chrome__row">
-      <p class="chrome__scene" id="scene-label">SCENE 01 / 05</p>
-      <p class="chrome__rec" id="rec-timer"><span class="rec-dot" aria-hidden="true">●</span> REC <span id="rec-time">00:00:00</span></p>
-    </div>
+<body>
+  <canvas id="stage" aria-hidden="true"></canvas>
+
+  <div class="cursor mono" id="cursor" aria-hidden="true">
+    <pre class="cursor__ret"> |
+-+-
+ |</pre>
+    <span class="cursor__link">[+]</span>
+    <span class="cursor__xy" id="cursor-xy">0000,0000</span>
   </div>
 
-  <main>
-    <section class="watch-space" id="cut-01" data-cut="01" data-scene="1">
-      <div class="watch">
-        <div class="watch-dive" id="watch-dive">
-          <pre class="panoptic-ring panoptic-ring--far" aria-hidden="true">(o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o)
- (o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o)
-(o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o)
- (o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o)
-(o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o) (o)</pre>
-          <pre class="panoptic-ring panoptic-ring--mid" aria-hidden="true">[##] [##] [##] [##] [##] [##] [##]
- [##] [##] [##] [##] [##] [##] [##] [##]
-[##] [##] [##] [##] [##] [##] [##] [##]</pre>
-          <pre class="eye" id="eye" aria-hidden="true"></pre>
-        </div>
-      </div>
-      <div class="watch-mark" id="cut-01b"></div>
-    </section>
+  <div class="chrome" id="chrome">
+    <div class="chrome__bar blend" id="bar" aria-hidden="true"></div>
+    <p class="chrome__scene blend mono" id="scene-label">SCENE 01 / 05</p>
+    <span class="rec-dot" id="rec-dot" aria-hidden="true">●</span>
+    <p class="chrome__rec blend mono" id="rec-text">REC <span id="rec-time">00:00:00</span></p>
+  </div>
 
-    <section class="scene02-space" id="cut-02" data-cut="02" data-scene="2">
-      <div class="sheet--scene02" id="sheet-02">
-        <header class="masthead masthead--scene02" data-masthead-part="02">
-          <h1 class="masthead__title scene-header" data-scene-header="02" lang="en">Who Is Watching</h1>
-        </header>
-        <div class="scene02-main col-a">
-          <div class="stream" id="stream" lang="en" aria-live="polite"></div>
-        </div>
-        <div class="scene02-aside col-b" id="cut02-aside">
-          <div class="popup-stack" id="popup-stack" aria-live="polite"></div>
-        </div>
-        <p class="scene02-stat prose" id="scene02-stat"></p>
-      </div>
-    </section>
+  <!-- S1 -->
+  <section class="ov ov1 blend" id="ov1" aria-label="Scene 1">
+    <p class="cam-label mono">CAM 01</p>
+    <div class="hero-block" id="hero-block">
+      <h1 class="hero" id="hero"></h1>
+      <p class="hero-sub" id="hero-sub1"></p>
+      <p class="hero-sub" id="hero-sub2"></p>
+    </div>
+    <p class="scroll-hint mono" id="scroll-hint">SCROLL ↓</p>
+  </section>
 
-    <section class="scene03-space" id="cut-03" data-cut="03" data-scene="3">
-      <div class="sheet sheet--stick sheet--scene03" id="sheet-03">
-        <header class="masthead masthead--sheet" data-masthead-part="03">
-          <h2 class="masthead__title scene-header" data-scene-header="03" lang="en">This Is How You Are Read</h2>
-        </header>
-        <div class="col-a">
-          <p class="prose excerpt" lang="en" data-excerpt="03" data-excerpt-index="0"></p>
-          <p class="prose scene03-sub" id="scene03-sub"></p>
-          <ul class="obs-log" id="obs-log" aria-live="polite"></ul>
-          <p class="privacy" id="privacy-notice"></p>
-        </div>
-        <div class="col-b">
-          <p class="prose idle-hint" id="idle-hint" hidden></p>
-          <ul class="profile-labels" id="profile-labels"></ul>
-          <p class="prose profile-summary" id="profile-summary"></p>
-        </div>
-      </div>
-      <div class="travel scene03-travel" id="travel" aria-hidden="true"></div>
-    </section>
+  <!-- S2 -->
+  <section class="ov ov2" id="ov2" aria-label="Scene 2">
+    <h2 class="scene-title" id="s2-title"></h2>
+    <div class="cols">
+      <div class="col-a"><div class="stream" id="stream" aria-live="polite"></div></div>
+      <div class="col-b"><div class="popups" id="popups"></div></div>
+    </div>
+    <p class="note mono" id="s2-hint"></p>
+    <p class="stat" id="s2-stat"></p>
+  </section>
 
-    <section class="scene04-space" id="cut-04" data-cut="04" data-scene="4">
-      <div class="sheet sheet--scene04" id="sheet-04">
-        <header class="masthead masthead--sheet" data-masthead-part="04">
-          <h2 class="masthead__title scene-header" data-scene-header="04" lang="en">And This Is What They Call Personalization</h2>
-        </header>
-        <div class="scene04-stage">
-          <div class="card-grid" id="card-grid"></div>
-        </div>
-        <p class="prose scene04-end" id="scene04-end" hidden></p>
+  <!-- S3 -->
+  <section class="ov ov3" id="ov3" aria-label="Scene 3">
+    <h2 class="scene-title" id="s3-title"></h2>
+    <div class="cols">
+      <div class="col-a">
+        <p class="sub" id="s3-sub"></p>
+        <ul class="obs-log mono" id="obs-log" aria-live="polite"></ul>
       </div>
-    </section>
-
-    <section class="cut cut--05 scene05-space" id="cut-05" data-cut="05" data-scene="5">
-      <p class="scene05-intro prose" id="scene05-intro" hidden></p>
-      <div class="windows" id="windows"></div>
-      <div class="sheet sheet--closing" id="closing" hidden>
-        <header class="masthead masthead--sheet" data-masthead-part="05">
-          <span class="masthead__title">2026</span>
-        </header>
-        <div class="col-a" id="ending-lines"></div>
-        <div class="col-b">
-          <ul class="ending-actions" id="ending-actions"></ul>
-          <p class="prose privacy" id="ending-privacy"></p>
-          <ul class="removable-labels" id="removable-labels"></ul>
-          <button type="button" class="restart-btn" id="restart-btn"></button>
-          <p class="prose excerpt" lang="en" id="closing-quote"></p>
-        </div>
+      <div class="col-b">
+        <ul class="labels" id="labels"></ul>
+        <p class="summary" id="summary"></p>
+        <p class="idle" id="idle" hidden></p>
       </div>
-    </section>
-  </main>
+    </div>
+    <p class="note mono" id="privacy"></p>
+  </section>
 
-  <script src="content.js?v=hybrid4"></script>
-  <script src="signals.js?v=hybrid4"></script>
-  <script src="script.js?v=hybrid4"></script>
+  <!-- S4 -->
+  <section class="ov ov4" id="ov4" aria-label="Scene 4">
+    <h2 class="scene-title scene-title--s4" id="s4-title"></h2>
+    <p class="note mono" id="s4-hint"></p>
+    <p class="counter mono" id="s4-counter"></p>
+    <p class="end-line" id="s4-end"></p>
+  </section>
+
+  <!-- S5 -->
+  <section class="ov ov5" id="ov5" aria-label="Scene 5">
+    <div class="s5-top">
+      <p class="s5-quote" id="s5-quote"></p>
+      <p class="s5-ko" id="s5-ko"></p>
+    </div>
+    <div class="s5-dim" id="s5-dim">
+      <span class="mono s5-dim__label">BRIGHTNESS</span>
+      <div class="slider mono" id="slider" role="slider" tabindex="0" aria-label="밝기" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div>
+    </div>
+    <div class="s5-dark" id="s5-dark" hidden>
+      <p class="s5-quote" id="s5-quote2"></p>
+      <ul class="erase-log mono" id="erase-log"></ul>
+      <button type="button" class="erase-btn mono" id="erase-btn"></button>
+    </div>
+    <div class="s5-final" id="s5-final" hidden>
+      <p class="final-line" id="final-line"></p>
+      <button type="button" class="restart-btn mono" id="restart-btn"></button>
+      <p class="credit mono">3D head scan: Lee Perry-Smith (CC BY 3.0) · three.js · FIGlet "Doom" · IBM Plex Mono · Pretendard · George Orwell, Nineteen Eighty-Four (Project Gutenberg Australia)</p>
+    </div>
+  </section>
+
+  <div class="track" id="track" aria-hidden="true"></div>
+
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+  <script src="content.js?v=s1"></script>
+  <script src="signals.js?v=s1"></script>
+  <script src="ascii/stage.js?v=s1"></script>
+  <script src="ascii/objects.js?v=s1"></script>
+  <script src="main.js?v=s1"></script>
+  <script type="module" src="ascii/render3d.js?v=s1"></script>
 </body>
 </html>
