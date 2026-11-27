@@ -7,11 +7,12 @@
    Head scan: Lee Perry-Smith, CC BY 3.0 (three.js examples). */
 import * as THREE from "three";
 import { GLTFLoader } from "../vendor/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "../vendor/jsm/loaders/DRACOLoader.js";
 
 const { Stage } = window.ASCII;
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 
-const API = { ready: false, headReady: false };
+const API = { ready: false, headReady: false, bodyReady: false, camModel: false };
 window.ASCII3D = API;
 
 let renderer = null;
@@ -126,6 +127,7 @@ if (renderer) {
       }
     }
     const chars = new Uint16Array(n);
+    const lv = new Uint8Array(n);
     const at = (x, y) => (x < 0 || y < 0 || x >= wc || y >= hc ? 0 : F[x + y * wc]);
     for (let cy = 0; cy < hc; cy += 1) {
       for (let cx = 0; cx < wc; cx += 1) {
@@ -139,6 +141,7 @@ if (renderer) {
           let psi = (Math.atan2(gy, gx) * 180) / Math.PI + 90;
           psi = ((psi % 180) + 180) % 180;
           chars[c] = psi < 22.5 || psi >= 157.5 ? 45 : psi < 67.5 ? 92 : psi < 112.5 ? 124 : 47;
+          lv[c] = 255;
           continue;
         }
         if (cov[c] < 0.4) continue;
@@ -146,9 +149,10 @@ if (renderer) {
         const t = BAYER[(cx & 3) + (cy & 3) * 4] / 16 - 0.5;
         const idx = clamp(Math.round(v * 5 + t * 0.9), 0, 5);
         chars[c] = RAMP.charCodeAt(idx);
+        lv[c] = Math.round(120 + 135 * v);
       }
     }
-    return { chars, cov, wc, hc };
+    return { chars, cov, lv, wc, hc };
   }
 
   function blit(buf, rect, res, tone) {
@@ -160,7 +164,7 @@ if (renderer) {
           if (res.cov[c] > 0.55) buf.set(rect.x + cx, rect.y + cy, 32, 0);
           continue;
         }
-        buf.set(rect.x + cx, rect.y + cy, code, tone || 0);
+        buf.set(rect.x + cx, rect.y + cy, code, tone || 0, res.lv ? res.lv[c] : 255);
       }
     }
   }
@@ -281,17 +285,17 @@ if (renderer) {
     if (rect.w < 20 || rect.h < 6) return [];
     const c = cctv;
     const n = clamp(Math.round(o.n), 1, c.cams.length);
-    const halfW = 7.4;
+    const halfW = o.halfW || 7.4;
     const halfH = ortho(c.cam, halfW, rect.w, rect.h);
     const marks = [];
     c.cams.forEach((k, i) => {
       k.g.visible = i < n;
       if (i >= n) return;
       const row = i < 4 ? 0 : 1;
-      const x = -5.2 + (i % 4) * 3.5 + row * 1.75;
-      const y = row === 0 ? halfH * 0.46 : -halfH * 0.46;
+      const x = o.solo ? 0 : -5.2 + (i % 4) * 3.5 + row * 1.75;
+      const y = o.solo ? 0 : row === 0 ? halfH * 0.46 : -halfH * 0.46;
       k.g.position.set(x, y, 0);
-      k.g.scale.setScalar(0.78);
+      k.g.scale.setScalar(o.scale || 0.78);
       const cellX = rect.x + (x / halfW * 0.5 + 0.5) * rect.w;
       const cellY = rect.y + (0.5 - y / halfH * 0.5) * rect.h;
       const ly = clamp(((o.ptr.x - cellX) / (Stage.cols * 0.3)), -1, 1);
@@ -304,11 +308,94 @@ if (renderer) {
     return marks;
   };
 
+  const loader = new GLTFLoader();
+  const draco = new DRACOLoader();
+  draco.setDecoderPath("vendor/jsm/libs/draco/gltf/");
+  loader.setDRACOLoader(draco);
+
+  /* optional: a real CCTV model replaces the hand-built camera (set window.__useCamModel = true before load) */
+  if (window.__useCamModel) loader.load(
+    "vendor/models/security_camera.glb",
+    (gltf) => {
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      const s = 2.7 / Math.max(size.x, size.y, size.z);
+      cctv.cams.forEach((k) => {
+        [...k.g.children].forEach((c) => {
+          if (c !== k.pivot) k.g.remove(c);
+        });
+        while (k.pivot.children.length) k.pivot.remove(k.pivot.children[0]);
+        const m = gltf.scene.clone(true);
+        m.traverse((o) => {
+          if (o.isMesh) o.material = M(0xffffff);
+        });
+        m.position.sub(center);
+        const wrap = new THREE.Group();
+        wrap.add(m);
+        wrap.scale.setScalar(s);
+        wrap.rotation.y = window.__camFlip || 0;
+        k.pivot.add(wrap);
+      });
+      API.camModel = true;
+    },
+    undefined,
+    () => {}
+  );
+
+  /* ───────── BODY (animated X Bot — the subject) ───────── */
+  const body = { scene: new THREE.Scene(), cam: makeCam(), group: new THREE.Group(), mixer: null, actions: {}, current: "", clock: new THREE.Clock(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) };
+  lights(body.scene, 1.2, 0.3);
+  body.scene.add(body.group);
+  loader.load(
+    "vendor/models/Xbot.glb",
+    (gltf) => {
+      gltf.scene.traverse((o) => {
+        if (o.isMesh) {
+          const mat = M(0xffffff);
+          mat.clippingPlanes = [body.plane];
+          o.material = mat;
+          o.frustumCulled = false;
+        }
+      });
+      body.group.add(gltf.scene);
+      body.mixer = new THREE.AnimationMixer(gltf.scene);
+      gltf.animations.forEach((a) => (body.actions[a.name] = body.mixer.clipAction(a)));
+      body.current = "idle";
+      if (body.actions.idle) body.actions.idle.play();
+      API.bodyReady = true;
+    },
+    undefined,
+    () => {}
+  );
+
+  API.drawBody = (buf, rect, o) => {
+    if (!API.bodyReady || rect.w < 10 || rect.h < 10) return null;
+    const b = body;
+    b.mixer.update(Math.min(0.05, b.clock.getDelta()));
+    const want = o.anim || "idle";
+    if (want !== b.current && b.actions[want]) {
+      const next = b.actions[want];
+      next.reset().play();
+      if (b.actions[b.current]) b.actions[b.current].crossFadeTo(next, 0.4, false);
+      b.current = want;
+    }
+    b.group.rotation.y = clamp(o.lookX, -1, 1) * 0.45 + (o.spin || 0);
+    const halfH = ortho(b.cam, Math.max(0.62, (1.08 * rect.w) / (rect.h * Stage.aspect)), rect.w, rect.h);
+    b.cam.position.y = 0.86;
+    const scanY = 1.95 - clamp(o.scan, 0, 1) * 2.05;
+    b.plane.constant = -scanY;
+    blit(buf, rect, rasterize(b.scene, b.cam, rect.w, rect.h, o.dark === true, [b.plane]), 0);
+    return { scanRow: rect.y + (0.5 - (scanY - 0.86) / halfH * 0.5) * rect.h, halfH };
+  };
+
   /* ───────── HEAD (scanned subject) ───────── */
   const head = { scene: new THREE.Scene(), group: new THREE.Group(), cam: makeCam(), plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), halfH: 1.4 };
   lights(head.scene, 1.2, 0.3);
   head.scene.add(head.group);
-  new GLTFLoader().load(
+  loader.load(
     "vendor/models/LeePerrySmith.glb",
     (gltf) => {
       const mat = M(0xc4c4c4);
@@ -351,5 +438,6 @@ if (renderer) {
     return { scanRow: rect.y + (0.5 - scanY / halfH * 0.5) * rect.h, cx: rect.x + rect.w / 2, halfH };
   };
 
+  API._cctv = typeof cctv !== 'undefined' ? cctv : null;
   API.ready = true;
 }

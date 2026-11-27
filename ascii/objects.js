@@ -206,6 +206,14 @@
         }
       }
     }
+    // depth cue: the far wall is dim, the near wall is bright; your eye is pulled to the centre
+    for (let i = 0; i < cols * rows; i += 1) {
+      if (buf.ch[i] === 32) continue;
+      const x = i % cols;
+      const y = (i / cols) | 0;
+      const rr = Math.hypot(x + 0.5 - cx, (y + 0.5 - cy) * aspect);
+      buf.lvl[i] = Math.round(70 + 185 * Math.pow(clamp(rr / (cols * 0.42), 0, 1), 0.8));
+    }
     // the eye at the top of the shaft
     const hw = Math.min(rTop * 0.96, cols * 0.48);
     const hh = Math.max(1.2, (hw / aspect) * 0.62);
@@ -286,22 +294,27 @@
       buf.text(Math.min(cols - 14, last[0] + 4), last[1] - 1, "x=" + Math.round(last[0]) + " y=" + Math.round(last[1]), 0);
     }
     // the scanned subject, with leaders to each label
-    if (ready3d() && window.ASCII3D.headReady) {
-      const rect = { x: Math.round(cols * 0.3), y: Math.round(rows * 0.24), w: Math.round(cols * 0.33), h: Math.round(rows * 0.68) };
-      const info = window.ASCII3D.drawHead(buf, rect, {
+    if (ready3d() && (window.ASCII3D.bodyReady || window.ASCII3D.headReady)) {
+      const useBody = window.ASCII3D.bodyReady;
+      const rect = useBody
+        ? { x: Math.round(cols * 0.34), y: Math.round(rows * 0.2), w: Math.round(cols * 0.28), h: Math.round(rows * 0.76) }
+        : { x: Math.round(cols * 0.3), y: Math.round(rows * 0.24), w: Math.round(cols * 0.33), h: Math.round(rows * 0.68) };
+      const opts = {
         lookX: (c.ptr.x / cols - 0.5) * 2,
         lookY: (c.ptr.y / rows - 0.5) * 2,
-        spin: Math.sin(c.t * 0.35) * 0.3,
+        spin: Math.sin(c.t * 0.35) * 0.25,
         scan: c.scan == null ? 1 : c.scan,
         dark: false,
-      });
+        anim: "idle",
+      };
+      const info = useBody ? window.ASCII3D.drawBody(buf, rect, opts) : window.ASCII3D.drawHead(buf, rect, opts);
       if (info) {
         const sr = Math.round(info.scanRow);
         if (c.scan != null && c.scan < 1) for (let x = rect.x; x < rect.x + rect.w; x += 1) buf.set(x, sr, ch("="), 0);
         const rects = c.labelRects || [];
         rects.forEach((r, i) => {
-          const ay = clamp(r.y, rect.y + rect.h * 0.18, rect.y + rect.h * 0.82);
-          if (ay <= sr || c.scan == null || c.scan >= 1) leader(buf, rect.x + rect.w * 0.64, ay, r.x - 2, r.y);
+          const ay = clamp(r.y, rect.y + rect.h * 0.12, rect.y + rect.h * 0.85);
+          if (ay <= sr || c.scan == null || c.scan >= 1) leader(buf, rect.x + rect.w * 0.62, ay, r.x - 2, r.y);
         });
         buf.text(rect.x, rect.y + rect.h, "SUBJECT 0001  " + (c.scan != null && c.scan < 1 ? "SCANNING" : "PROFILED"), 0);
       }
@@ -401,7 +414,7 @@
 
     // one texel == one cell at the centre of the view, so text never doubles
     function ensureSize(c) {
-      const fov = ((c.cols < 110 ? 58 : 88) * Math.PI) / 180;
+      const fov = ((c.cols < 110 ? 58 : 76) * Math.PI) / 180;
       const want = Math.max(300, Math.round(TAU * (c.cols / 2 / Math.tan(fov / 2))));
       if (want === TW) return;
       TW = want;
@@ -542,7 +555,7 @@
       map(c, x, y) {
         ensureSize(c);
         const { cols, aspect } = c;
-        const fov = ((cols < 110 ? 58 : 88) * Math.PI) / 180;
+        const fov = ((cols < 110 ? 58 : 76) * Math.PI) / 180;
         const Fc = (cols / 2 / Math.tan(fov / 2)) * c.zoom;
         const dphi = TAU / TW;
         const sx = x + 0.5 - cols / 2;
@@ -569,7 +582,7 @@
         if (dirty) rebuild();
         buf.clear(false);
         const { cols, rows } = c;
-        const fov = ((cols < 110 ? 58 : 88) * Math.PI) / 180;
+        const fov = ((cols < 110 ? 58 : 76) * Math.PI) / 180;
         const Fc = (cols / 2 / Math.tan(fov / 2)) * c.zoom;
         const dphi = TAU / TW;
         const cxm = cols / 2;
@@ -643,7 +656,10 @@
       buf.set(sx0, y, ch("#"), 0);
       buf.set(sx1, y, ch("#"), 0);
     }
-    const lines = c.lines;
+    const V = window.ASCII.Video;
+    const hasVideo = V && V.ready;
+    if (hasVideo) V.draw(buf, { x: sx0 + 1, y: sy0 + 1, w: sx1 - sx0 - 1, h: sy1 - sy0 - 1 }, { gain: Math.pow(b, 1.1) });
+    const lines = hasVideo ? [] : c.lines;
     const n = lines.length || 1;
     const scroll = Math.floor(t * 2.2);
     const dens = Math.min(1.01, Math.pow(b, 1.25) * 1.05);

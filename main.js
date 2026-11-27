@@ -774,6 +774,37 @@
     ov[2].querySelector(".stat").style.visibility = conv > 0 ? "hidden" : "";
   }
 
+  /* ───────── motion hooks ───────── */
+  const Mo = window.ASCII.Motion;
+  const FX = { actId: "", actAt: 0, scene: 0, glitchUntil: 0, clickAt: -1e9, cx: 0, cy: 0 };
+
+  function applyMotion(act, p, scene, now) {
+    if (reduced || !Mo) return;
+    const O = Stage.O;
+    const t = now / 1000;
+    if (act.id !== FX.actId) {
+      FX.actId = act.id;
+      FX.actAt = now;
+    }
+    if (scene !== FX.scene) {
+      FX.scene = scene;
+      FX.glitchUntil = now + 380;
+    }
+    const darkAct = act.id === "tower" || act.id === "t12" || act.id === "s5";
+    // first arrival: the tower is decoded out of noise
+    const intro = clamp((now - S1.start) / 1900, 0, 1);
+    if (act.id === "tower" && intro < 1) Mo.decode(O, intro, t, 1);
+    // entering a scene: the page is read out character by character
+    const enter = clamp((now - FX.actAt) / 850, 0, 1);
+    if (enter < 1 && /^s[2-5]$/.test(act.id) && now - S1.start > 2000) Mo.decode(O, enter, t, scene);
+    Mo.vignette(O, darkAct ? 0.6 : act.id === "s4" ? 0.3 : 0.2);
+    Mo.shimmer(O, t, darkAct ? 0.2 : 0.07);
+    let g = now < FX.glitchUntil ? (0.7 * (FX.glitchUntil - now)) / 380 : 0;
+    if (act.id === "s5" && S5.eraseP > 0 && !S5.done) g = Math.max(g, S5.eraseP * 0.5);
+    Mo.glitch(O, t, g);
+    Mo.ripple(O, FX.cx, FX.cy, (now - FX.clickAt) / 1000);
+  }
+
   let lastFrameT = performance.now();
   let rafId = 0;
   let current = null;
@@ -825,6 +856,7 @@
 
     if (!frozen) {
       renderFrame(act, p);
+      applyMotion(act, p, scene, now);
       Stage.draw(Stage.O);
     }
   }
@@ -854,6 +886,10 @@
 
   function onClick(e) {
     D.clicks += 1;
+    FX.clickAt = performance.now();
+    const cc = Stage.cellFromClient(e.clientX, e.clientY);
+    FX.cx = cc.x;
+    FX.cy = cc.y;
     if (!current || current.id !== "s4" || e.target !== $("stage") || !lastCyl) return;
     const c = Stage.cellFromClient(e.clientX, e.clientY);
     const i = Cyl.pick(lastCyl, c.x, c.y);
@@ -920,6 +956,7 @@
   };
 
   function init() {
+    if (window.ASCII.Video) window.ASCII.Video.load("assets/video/telescreen.mp4");
     fetch("vendor/figlet/Doom.flf").then((r) => r.text()).then((t) => { S5.font = OB.parseFlf(t); }).catch(() => {});
     plantCookies();
     Cursor.init();
